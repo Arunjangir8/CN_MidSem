@@ -1,0 +1,4 @@
+Mac1  10.7.21.254     OK   round-trip min/avg/max/stddev = 6.192/9.671/11.545/2.463 ms
+Mac2  10.7.19.102     OK   round-trip min/avg/max/stddev = 0.202/0.223/0.252/0.021 ms
+Mac3  10.7.5.55       OK   round-trip min/avg/max/stddev = 6.299/39.014/100.921/43.799 ms
+Mac4  10.7.16.171     OK   round-trip min/avg/max/stddev = 80.773/169.269/222.328/62.988 ms

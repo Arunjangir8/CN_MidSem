@@ -20,6 +20,7 @@ Har Mac ki apni zip hai (`MAC1.zip` … `MAC4.zip`). Har zip mein **pura project
 3. Homebrew install (agar nahi hai): <https://brew.sh>
 4. Zip unzip karo, Terminal mein folder ke andar jao:
    ```bash
+   setopt interactivecomments
    cd ~/Downloads/MAC1          # apna folder
    xattr -dr com.apple.quarantine .   # macOS "downloaded file" block hatao
    chmod +x render.sh */*.sh

@@ -1,0 +1,364 @@
+==================== A1 ====================
+Mac 1 / DNS server (dnsmasq) + client : 10.7.21.254  (en0)
+Mac 2 / Edge nginx (TLS + LB)         : 10.7.19.102  (en0)
+Mac 3 / Backend A :3001               : 10.7.5.55    (en0)
+Mac 4 / Backend B :3002               : 10.7.16.171  (en0)
+Subnet: 255.255.224.0 (/19), Gateway: 10.7.0.1
+
+==================== A2 ====================
+port=53
+listen-address=127.0.0.1,10.7.21.254
+domain-needed
+bogus-priv
+no-resolv
+server=1.1.1.1
+local=/team1.test/
+addn-hosts=/opt/homebrew/etc/dnsmasq.d/team.hosts
+local-ttl=30
+
+# records (team.hosts, loaded via addn-hosts=)
+10.7.19.102   app.team1.test
+10.7.19.102   api.team1.test
+10.7.21.254   dns1.team1.test
+10.7.5.55     dns2.team1.test
+10.7.19.102   edge.team1.test
+10.7.5.55     backend-a.team1.test
+10.7.16.171   backend-b.team1.test
+
+==================== A3 ====================
+$ dig app.team1.test
+
+; <<>> DiG 9.10.6 <<>> app.team1.test
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 4237
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;app.team1.test.			IN	A
+
+;; ANSWER SECTION:
+app.team1.test.		30	IN	A	10.7.19.102
+
+;; Query time: 332 msec
+;; SERVER: 10.7.21.254#53(10.7.21.254)
+;; WHEN: Sun Oct 04 20:12:28 IST 2026
+;; MSG SIZE  rcvd: 59
+
+==================== A4 ====================
+$ dig @8.8.8.8 app.team1.test
+
+; <<>> DiG 9.10.6 <<>> @8.8.8.8 app.team1.test
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 32619
+;; flags: qr rd ra ad; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+;; QUESTION SECTION:
+;app.team1.test.			IN	A
+
+;; AUTHORITY SECTION:
+.			86325	IN	SOA	a.root-servers.net. nstld.verisign-grs.com. 2026100400 1800 900 604800 86400
+
+;; Query time: 16 msec
+;; SERVER: 8.8.8.8#53(8.8.8.8)
+;; WHEN: Sun Oct 04 20:12:03 IST 2026
+;; MSG SIZE  rcvd: 118
+
+==================== A5 ====================
+Mac1 → Mac2: ping 10.7.19.102 — OK (avg 52.464 ms)
+Mac1 → Mac3: ping 10.7.5.55   — OK (avg 6.786 ms)
+Mac1 → Mac4: ping 10.7.16.171 — OK (avg 76.950 ms)
+Mac2 → Mac1: ping -c 4 10.7.21.254 — 4 packets transmitted, 4 received, 0.0% loss
+Mac2 → Mac3: ping -c 4 10.7.5.55   — 4 packets transmitted, 4 received, 0.0% loss
+Mac2 → Mac4: ping -c 4 10.7.16.171 — 4 packets transmitted, 4 received, 0.0% loss
+Mac3 → Mac4: ping -c 4 10.7.16.171 — <PASTE FROM MAC 3>
+
+All machines are on the same Wi-Fi LAN (10.7.0.0/19, gateway 10.7.0.1) and reach each other with no packet loss.
+
+Mac 2 raw output:
+== ping -c 4 10.7.21.254
+--- 10.7.21.254 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 26.751/65.044/109.365/29.899 ms
+== ping -c 4 10.7.5.55
+--- 10.7.5.55 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 7.223/87.722/326.011/137.581 ms
+== ping -c 4 10.7.16.171
+--- 10.7.16.171 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 12.745/19.628/26.711/6.456 ms
+
+==================== B1 ====================
+$ curl -v https://app.team1.test
+* Host app.team1.test:443 was resolved.
+* IPv6: (none)
+* IPv4: 10.7.19.102
+*   Trying 10.7.19.102:443...
+* Connected to app.team1.test (10.7.19.102) port 443
+* ALPN: curl offers h2,http/1.1
+* (304) (OUT), TLS handshake, Client hello (1):
+} [319 bytes data]
+*  CAfile: /etc/ssl/cert.pem
+*  CApath: none
+* (304) (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* (304) (IN), TLS handshake, Unknown (8):
+{ [47 bytes data]
+* (304) (IN), TLS handshake, Certificate (11):
+{ [1135 bytes data]
+* (304) (IN), TLS handshake, CERT verify (15):
+{ [264 bytes data]
+* (304) (IN), TLS handshake, Finished (20):
+{ [36 bytes data]
+* (304) (OUT), TLS handshake, Finished (20):
+} [36 bytes data]
+* SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 / [blank] / UNDEF
+* ALPN: server accepted h2
+* Server certificate:
+*  subject: CN=app.team1.test
+*  start date: Oct  4 13:11:02 2026 GMT
+*  expire date: Nov  5 13:11:02 2027 GMT
+*  subjectAltName: host "app.team1.test" matched cert's "app.team1.test"
+*  issuer: CN=team1 Local Root CA; O=CN Project team1
+*  SSL certificate verify ok.
+* using HTTP/2
+* [HTTP/2] [1] OPENED stream for https://app.team1.test/
+* [HTTP/2] [1] [:method: GET]
+* [HTTP/2] [1] [:scheme: https]
+* [HTTP/2] [1] [:authority: app.team1.test]
+* [HTTP/2] [1] [:path: /]
+* [HTTP/2] [1] [user-agent: curl/8.7.1]
+* [HTTP/2] [1] [accept: */*]
+> GET / HTTP/2
+> Host: app.team1.test
+> User-Agent: curl/8.7.1
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/2 200 
+< server: nginx/1.31.6
+< date: Sun, 04 Oct 2026 14:42:29 GMT
+< content-type: text/html; charset=utf-8
+< content-length: 177
+< x-backend: A
+< cache-control: no-store
+< x-edge: app.team1.test
+< x-upstream: 10.7.5.55:3001
+< 
+{ [177 bytes data]
+* Connection #0 to host app.team1.test left intact
+<!doctype html><title>Backend A</title><h1>Served by Backend A</h1><p>host: Mayank-Thukrans-MacBook-Pro.local, port: 3001</p><p>Refresh to watch the load balancer alternate.</p>
+
+==================== B2 ====================
+$ for i in {1..6}; do curl -s https://app.team1.test/api/status; echo; done
+{
+  "backend": "B",
+  "status": "ok",
+  "host": "Keshavs-MacBook-Pro-2.local",
+  "port": 3002,
+  "uptime_s": 5998.8,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+{
+  "backend": "A",
+  "status": "ok",
+  "host": "Mayank-Thukrans-MacBook-Pro.local",
+  "port": 3001,
+  "uptime_s": 5964.2,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+{
+  "backend": "B",
+  "status": "ok",
+  "host": "Keshavs-MacBook-Pro-2.local",
+  "port": 3002,
+  "uptime_s": 5998.9,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+{
+  "backend": "A",
+  "status": "ok",
+  "host": "Mayank-Thukrans-MacBook-Pro.local",
+  "port": 3001,
+  "uptime_s": 5964.3,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+{
+  "backend": "B",
+  "status": "ok",
+  "host": "Keshavs-MacBook-Pro-2.local",
+  "port": 3002,
+  "uptime_s": 5999.0,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+{
+  "backend": "A",
+  "status": "ok",
+  "host": "Mayank-Thukrans-MacBook-Pro.local",
+  "port": 3001,
+  "uptime_s": 5964.4,
+  "tcp_peer_ip": "10.7.19.102",
+  "x_forwarded_for": "10.7.19.102",
+  "x_forwarded_proto": "https",
+  "host_header": "app.team1.test"
+}
+
+==================== B3 ====================
+# ===== Team team1 edge (Mac 2) - PHASE 1 =====
+# Installed as: /opt/homebrew/etc/nginx/servers/team.conf
+# (Homebrew's nginx.conf already does include servers/*; inside http{})
+
+log_format team_lb '$remote_addr:$remote_port "$request" $status '
+                   'upstream=$upstream_addr up_status=$upstream_status '
+                   'tls=$ssl_protocol rt=$request_time';
+
+# The pool of backends. Default algorithm = round robin.
+# (alternative: add least_conn; and explain it in the viva)
+upstream team_backends {
+    server 10.7.5.55:3001;   # Backend A (Mac 3)
+    server 10.7.16.171:3002;   # Backend B (Mac 4)
+}
+
+# Plain HTTP -> redirect to HTTPS
+server {
+    listen 80;
+    server_name app.team1.test api.team1.test;
+    return 301 https://$host:443$request_uri;
+}
+
+# HTTPS: TLS terminates HERE; backends receive plain HTTP on the LAN
+server {
+    listen 443 ssl;
+    http2 on;                               # nginx >= 1.25.1
+    server_name app.team1.test api.team1.test;
+
+    ssl_certificate     /opt/homebrew/etc/nginx/certs/server.crt;
+    ssl_certificate_key /opt/homebrew/etc/nginx/certs/server.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    access_log /tmp/nginx-team-access.log team_lb;
+    error_log  /tmp/nginx-team-error.log  warn;
+
+    add_header X-Edge     $hostname       always;  # which edge answered
+    add_header X-Upstream $upstream_addr  always;  # which backend IP:port
+
+    location / {
+        proxy_pass http://team_backends;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+    }
+}
+
+==================== C1 ====================
+Filter: dns. Query: Frame 324, Standard query 0x310e A app.team1.test from client Mac 4 10.7.16.171:63041 to our private DNS server Mac 1 10.7.21.254:53 over UDP. Response: Frame 325 from 10.7.21.254 back to 10.7.16.171 with the same transaction ID 0x310e — ANSWER: app.team1.test A 10.7.19.102 (Mac 2, the nginx edge), TTL 30 s (local-ttl=30 in dnsmasq; dig also shows app.team1.test. 30 IN A 10.7.19.102). Round trip ≈ 10.7 ms (4.954865 → 4.965569). This proves the client resolves our private name through our own dnsmasq server on Mac 1, not a public resolver.
+
+==================== C2 ====================
+Filter: tcp.flags.syn==1. SYN (frame 56632) from client 10.7.16.171 ephemeral port 53342 to edge 10.7.19.102:443, Seq=0, MSS=1460, WS=64, SACK_PERM. SYN-ACK (frame 56633) from 10.7.19.102:443 back to 10.7.16.171:53342, Seq=0 Ack=1 — server acknowledges the client's ISN. ACK (frame 56634) from client, Seq=1 Ack=1 — handshake complete in ≈9.4 ms (727.798610 → 727.808048). Only after this does the TLS Client Hello appear (frame 56635), so a reliable, ordered, connection-oriented byte stream is established before any TLS data. We also see the second leg of the reverse proxy: frames 56653/56654 show nginx on 10.7.19.102 opening a new TCP connection from port 62963 to Backend B 10.7.16.171:3002 (SYN / SYN-ACK) — the edge terminates TLS and opens a separate plain TCP connection to the backend.
+
+==================== C3 ====================
+Filter: tls. ClientHello (frame 56635, 390 bytes) from 10.7.16.171:53342 to 10.7.19.102:443 with SNI=app.team1.test; it offers TLS 1.3 (supported_versions 0x0304) with cipher suites TLS_CHACHA20_POLY1305_SHA256, TLS_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256 plus TLS 1.2 ECDHE fallbacks, and ALPN h2/http1.1. The server replies (frame 56638, 1514 bytes) with Server Hello + Change Cipher Spec followed immediately by encrypted records — in TLS 1.3 the Certificate (CN=app.team1.test, issued by "team1 Local Root CA"), CertificateVerify and Finished are already encrypted, so Wireshark shows them as "Application Data". Negotiated: TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 (confirmed by curl -v). The client sends its Change Cipher Spec (frame 56641) and from then on every packet in both directions (56642–56668) is only "Application Data". The HTTP/2 request (GET /api/status, Host header) and the JSON response are inside these encrypted TLS records, so Wireshark cannot read the HTTP headers or body — only IPs, ports, packet sizes and the plaintext SNI in the ClientHello are visible.
+
+==================== D1 ====================
+URL: https://app.team1.test/api/catalog (cache headers are set on /api/catalog; /api/status is live data and is intentionally Cache-Control: no-store, shown second)
+$ curl -sI https://app.team1.test/api/catalog
+HTTP/2 200 
+server: nginx/1.31.6
+date: Sun, 04 Oct 2026 14:50:38 GMT
+content-type: application/json
+content-length: 228
+x-backend: A
+cache-control: public, max-age=60
+etag: "55df56e6b3ea9005"
+last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+x-edge: app.team1.test
+x-upstream: 10.7.5.55:3001
+
+$ curl -sI https://app.team1.test/api/status
+HTTP/2 200 
+server: nginx/1.31.6
+date: Sun, 04 Oct 2026 14:50:37 GMT
+content-type: application/json
+content-length: 253
+x-backend: B
+cache-control: no-store
+x-edge: app.team1.test
+x-upstream: 10.7.16.171:3002
+
+$ curl -sI -H 'If-None-Match: "55df56e6b3ea9005"' https://app.team1.test/api/catalog
+HTTP/2 304 
+server: nginx/1.31.6
+date: Sun, 04 Oct 2026 14:50:38 GMT
+x-backend: A
+cache-control: public, max-age=60
+etag: "55df56e6b3ea9005"
+last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+x-edge: app.team1.test
+x-upstream: 10.7.5.55:3001
+
+==================== D2 ====================
+Cache-Control: public, max-age=60 on /api/catalog tells the client (and any shared cache) that the response may be stored and reused for 60 seconds counted from the Date header, so for the next 60 s the browser serves /api/catalog from its own cache without contacting our edge at all (DevTools shows "(disk cache)"). After the 60 s TTL expires the copy becomes stale, so the client revalidates by sending a conditional request with If-None-Match: "55df56e6b3ea9005" (the stored ETag). If the resource has not changed, the server answers 304 Not Modified with headers only and no body, and the client keeps using its cached copy for another 60 s; if the ETag no longer matches, the server returns a fresh 200 with the new body and new ETag. We verified this: the conditional request above returned HTTP/2 304 with the same ETag, while a wrong ETag returns 200. Both backends compute the same ETag from the content, so the 304 works no matter which backend the load balancer picks. In contrast, /api/status uses no-store, so it is never cached and always shows live load-balancer data.
+
+==================== D3 ====================
+(1) Option C — Wrong destination port.
+
+(2) Before (20:20:38 IST): the service on the correct port 443 works:
+$ curl -v https://app.team1.test:443/api/status
+* Connected to app.team1.test (10.7.19.102) port 443
+*  SSL certificate verify ok.
+< HTTP/2 200 
+< x-backend: B
+
+(3) After — same host, wrong port 9999:
+$ curl -v https://app.team1.test:9999/api/status
+* IPv4: 10.7.19.102
+*   Trying 10.7.19.102:9999...
+* connect to 10.7.19.102 port 9999 from 10.7.19.102 port 63439 failed: Connection refused
+* Failed to connect to app.team1.test port 9999 after 3 ms: Couldn't connect to server
+curl: (7) Failed to connect to app.team1.test port 9999 after 3 ms: Couldn't connect to server
+
+$ ping -c 3 app.team1.test
+3 packets transmitted, 3 packets received, 0.0% packet loss
+
+$ nc -vz 10.7.19.102 9999
+nc: connectx to 10.7.19.102 port 9999 (tcp) failed: Connection refused
+$ nc -vz 10.7.19.102 443
+Connection to 10.7.19.102 port 443 [tcp/https] succeeded!
+DNS still resolved the name to 10.7.19.102 and ping still gets 0% loss, so the network (Layer 3) and the host are fine. The failure happens in 3 ms with "Connection refused": the host replied to our SYN with a TCP RST because no process is listening on port 9999.
+
+(4) Layer affected: Layer 4 — Transport (TCP). DNS (L7 name resolution) and IP routing (L3) both work; the TCP connection is rejected at the port level because nginx only listens on 80 and 443. Since TCP never connects, TLS and HTTP never start.
+
+(5) Restored: used the correct port 443 again (no configuration was changed, nothing needed to be restarted):
+$ curl -s -D - -o /dev/null https://app.team1.test/api/status
+HTTP/2 200 
+x-backend: A

@@ -13,5 +13,5 @@ cp "$ROOT/tls/out/server.crt" "$ROOT/tls/out/server.key" "$BREW_PREFIX/etc/nginx
 chmod 600 "$BREW_PREFIX/etc/nginx/certs/server.key"
 cp "$SRC" "$BREW_PREFIX/etc/nginx/servers/team.conf"
 sudo nginx -t
-if pgrep -x nginx >/dev/null; then sudo nginx -s reload; else sudo nginx; fi
+if pgrep -f 'nginx: master' >/dev/null; then sudo nginx -s reload; else sudo nginx; fi
 echo "nginx running with $PHASE config"

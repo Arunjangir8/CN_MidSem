@@ -1,0 +1,9 @@
+
+[1m== app.team1.test  -  interface en0 ==[0m
+IPv4 address : 10.7.19.102
+Subnet mask  : 255.255.224.0
+Prefix       : 0xffffe000  (hex mask)
+Gateway      : 10.7.0.1
+Default if   : en0
+MAC address  : de:18:32:22:fd:bd
+DNS servers  : 10.7.21.254 
