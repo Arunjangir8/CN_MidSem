@@ -1,105 +1,105 @@
 # MAC 1 — Primary DNS server + Test client
 
-Tum **Mac 1** ho. Kaam: dnsmasq (DNS server) chalana + client ki tarah test karna.
-Poori team ka overview: `SETUP_4_MACS.md` · bahut detail: `FULL_GUIDE.md`.
+You are **Mac 1**. Job: run dnsmasq (DNS server) + test as a client.
+Whole-team overview: `SETUP_4_MACS.md` · full detail: `FULL_GUIDE.md`.
 
-## 0. Fresh Mac setup (ek baar, is Mac pe)
+## 0. Fresh Mac setup (one time, on this Mac)
 
-Terminal kholo (Cmd+Space → "Terminal") aur ek-ek line chalao:
+Open Terminal (Cmd+Space → "Terminal") and run these lines one by one:
 
 ```bash
-# 1) Apple command line tools (python3, git, dig, curl) — popup aaye to Install
+# 1) Apple command line tools (python3, git, dig, curl) — click Install if a popup appears
 xcode-select --install
 
-# 2) Homebrew (password maangega — typing dikhegi nahi, normal hai)
+# 2) Homebrew (asks for password — typing won't be shown, that's normal)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew --version            # version dikhe = OK   (Intel Mac pe path /usr/local hota hai — installer jo bole wahi lines chalao)
+brew --version            # version shown = OK   (on Intel Macs the path is /usr/local — run whatever lines the installer prints)
 
-# 3) Zip ko Downloads mein unzip karo (double-click), phir:
+# 3) Unzip the zip in Downloads (double-click), then:
 cd ~/Downloads/MAC1
 xattr -dr com.apple.quarantine .
 chmod +x render.sh */*.sh
 ```
 
-Wi-Fi: sab 4 Mac **same hotspot/router** pe. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
-Firewall popup (python3 / nginx / dnsmasq "accept incoming connections?") aaye → **Allow**.
+Wi-Fi: all 4 Macs on the **same hotspot/router**. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
+If a firewall popup appears (python3 / nginx / dnsmasq "accept incoming connections?") → **Allow**.
 
-## 1. IP set karo (sirf `config.env`)
+## 1. Set IPs (only `config.env`)
 
 ```bash
-ipconfig getifaddr en0      # is Mac ki IP — team ke saath share karo
+ipconfig getifaddr en0      # this Mac's IP — share it with the team
 ```
-Charon IPs milne ke baad `config.env` kholo:
+Once you have all four IPs, open `config.env`:
 ```bash
 open -e config.env
 ```
-Ye lines badlo aur save karo (charon Macs pe **bilkul same** file):
+Change these lines and save (the file must be **exactly the same** on all four Macs):
 ```
 TEAM=team1
-MAC1_IP=<Mac 1 ki IP>
-MAC2_IP=<Mac 2 ki IP>
-MAC3_IP=<Mac 3 ki IP>
-MAC4_IP=<Mac 4 ki IP>
+MAC1_IP=<Mac 1 IP>
+MAC2_IP=<Mac 2 IP>
+MAC3_IP=<Mac 3 IP>
+MAC4_IP=<Mac 4 IP>
 ```
-Phir:
+Then:
 ```bash
 ./render.sh
 scripts/netinfo.sh | tee evidence/phase1/A1-netinfo-$(hostname -s).txt
-scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # sab OK aane chahiye
+scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # all should be OK
 ```
-> Neeche `team1` aur `<MACx_IP>` ki jagah apna team / IP likhna.
-> IP baad mein badle → `config.env` update → `./render.sh` → apne role ka install command dobara.
+> Below, replace `team1` and `<MACx_IP>` with your own team / IP.
+> If the IP changes later → update `config.env` → `./render.sh` → rerun your role's install command.
 
 
-## 2. PHASE 1 — order mein chalao
+## 2. PHASE 1 — run in order
 
-**Start order team ka:** Mac 3 + Mac 4 backend → **Mac 1 DNS (tum)** → Mac 2 nginx → certificate share.
+**Team start order:** Mac 3 + Mac 4 backend → **Mac 1 DNS (you)** → Mac 2 nginx → certificate share.
 
 ```bash
-# (a) DNS server install + start  (dnsmasq install karega, password maangega)
+# (a) Install + start DNS server  (installs dnsmasq, asks for password)
 dns/install-dns.sh
-#     last mein Mac 2 ki IP print honi chahiye = OK
+#     Mac 2's IP should be printed at the end = OK
 
-# (b) Is Mac ka DNS bhi Mac 1 pe set karo
+# (b) Point this Mac's DNS to Mac 1 too
 scripts/client-dns.sh primary
 
 # (c) Check
 dig app.team1.test          # ANSWER = Mac 2 IP, SERVER = Mac 1 IP#53
 nslookup app.team1.test
-tail -f /tmp/dnsmasq.log    # live queries (Ctrl+C se band)
+tail -f /tmp/dnsmasq.log    # live queries (stop with Ctrl+C)
 ```
 
-**Mac 2 se `ca.crt` milne ke baad** (AirDrop se aayegi) usko `tls/out/` folder mein rakho:
+**After you receive `ca.crt` from Mac 2** (it comes via AirDrop), put it in the `tls/out/` folder:
 ```bash
 mkdir -p tls/out && mv ~/Downloads/ca.crt tls/out/
-tls/trust-ca.sh             # browser/curl ab certificate trust karenge
+tls/trust-ca.sh             # browser/curl will now trust the certificate
 scripts/lb-test.sh 10       # A, B, A, B ...
-open https://app.team1.test # padlock, koi warning nahi
+open https://app.team1.test # padlock, no warning
 ```
-Screenshot: `dig`, `nslookup`, browser padlock → `evidence/phase1/`.
+Screenshots: `dig`, `nslookup`, browser padlock → `evidence/phase1/`.
 
-### Failure demo #2 (tum karoge)
+### Failure demo #2 (you run this)
 ```bash
-scripts/dns-set-record.sh app <MAC4_IP>     # galat record
+scripts/dns-set-record.sh app <MAC4_IP>     # wrong record
 #   Mac 4: scripts/client-dns.sh flush; curl -v https://app.team1.test  -> Connection refused
-scripts/dns-set-record.sh app reset         # wapas theek
+scripts/dns-set-record.sh app reset         # back to normal
 ```
 
 ## 3. PHASE 2
 
 ```bash
-# Ext A — Backup DNS demo (Mac 3 pe backup DNS install hone ke baad)
+# Ext A — Backup DNS demo (after backup DNS is installed on Mac 3)
 scripts/client-dns.sh both               # DNS = Mac 1 + Mac 3
-sudo brew services stop dnsmasq          # primary band  -> Mac 4 abhi bhi resolve karega
-sudo brew services start dnsmasq         # wapas chalu
+sudo brew services stop dnsmasq          # stop primary  -> Mac 4 still resolves
+sudo brew services start dnsmasq         # start again
 
-# Ext B — TTL demo (Mac 3 pe bhi SAME command saath mein)
+# Ext B — TTL demo (run the SAME command on Mac 3 at the same time)
 scripts/dns-set-record.sh app <MAC3_IP>
 scripts/dns-set-record.sh app reset
 
-# Ext E — Edge cutover (Mac 3 pe bhi same)
+# Ext E — Edge cutover (same on Mac 3 too)
 scripts/client-dns.sh flush
 scripts/dns-set-record.sh app <MAC3_IP>
 scripts/dns-set-record.sh api <MAC3_IP>
@@ -107,13 +107,13 @@ curl -sI https://app.team1.test/ | grep -i x-edge     # -> Mac 3
 scripts/dns-set-record.sh app reset
 scripts/dns-set-record.sh api reset
 
-# Ext C demo — direct backend access block hona chahiye
-curl --connect-timeout 3 http://<MAC3_IP>:3001/health   # timeout = firewall kaam kar raha
+# Ext C demo — direct backend access should be blocked
+curl --connect-timeout 3 http://<MAC3_IP>:3001/health   # timeout = firewall is working
 ```
-⚠️ Phase 2 rule: DNS record change **Mac 1 aur Mac 3 dono** pe.
+⚠️ Phase 2 rule: change DNS records on **both Mac 1 and Mac 3**.
 
-## Band karna / reset
+## Stop / reset
 ```bash
 sudo brew services stop dnsmasq
-scripts/client-dns.sh reset      # is Mac ka DNS wapas normal
+scripts/client-dns.sh reset      # restore this Mac's DNS to normal
 ```

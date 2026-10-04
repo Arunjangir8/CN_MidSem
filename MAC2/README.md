@@ -1,84 +1,84 @@
 # MAC 2 — Edge: nginx reverse proxy + TLS + load balancer
 
-Tum **Mac 2** ho. Saari HTTPS traffic tumhare paas aati hai aur tum Mac 3 / Mac 4 ko bhejte ho.
-Poori team ka overview: `SETUP_4_MACS.md` · bahut detail: `FULL_GUIDE.md`.
+You are **Mac 2**. All HTTPS traffic comes to you, and you forward it to Mac 3 / Mac 4.
+Whole-team overview: `SETUP_4_MACS.md` · full detail: `FULL_GUIDE.md`.
 
-## 0. Fresh Mac setup (ek baar, is Mac pe)
+## 0. Fresh Mac setup (one time, on this Mac)
 
-Terminal kholo (Cmd+Space → "Terminal") aur ek-ek line chalao:
+Open Terminal (Cmd+Space → "Terminal") and run these lines one by one:
 
 ```bash
-# 1) Apple command line tools (python3, git, dig, curl) — popup aaye to Install
+# 1) Apple command line tools (python3, git, dig, curl) — click Install if a popup appears
 xcode-select --install
 
-# 2) Homebrew (password maangega — typing dikhegi nahi, normal hai)
+# 2) Homebrew (asks for password — typing won't be shown, that's normal)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew --version            # version dikhe = OK   (Intel Mac pe path /usr/local hota hai — installer jo bole wahi lines chalao)
+brew --version            # version shown = OK   (on Intel Macs the path is /usr/local — run whatever lines the installer prints)
 
-# 3) Zip ko Downloads mein unzip karo (double-click), phir:
+# 3) Unzip the zip in Downloads (double-click), then:
 cd ~/Downloads/MAC2
 xattr -dr com.apple.quarantine .
 chmod +x render.sh */*.sh
 ```
 
-Wi-Fi: sab 4 Mac **same hotspot/router** pe. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
-Firewall popup (python3 / nginx / dnsmasq "accept incoming connections?") aaye → **Allow**.
+Wi-Fi: all 4 Macs on the **same hotspot/router**. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
+If a firewall popup appears (python3 / nginx / dnsmasq "accept incoming connections?") → **Allow**.
 
-## 1. IP set karo (sirf `config.env`)
+## 1. Set IPs (only `config.env`)
 
 ```bash
-ipconfig getifaddr en0      # is Mac ki IP — team ke saath share karo
+ipconfig getifaddr en0      # this Mac's IP — share it with the team
 ```
-Charon IPs milne ke baad `config.env` kholo:
+Once you have all four IPs, open `config.env`:
 ```bash
 open -e config.env
 ```
-Ye lines badlo aur save karo (charon Macs pe **bilkul same** file):
+Change these lines and save (the file must be **exactly the same** on all four Macs):
 ```
 TEAM=team1
-MAC1_IP=<Mac 1 ki IP>
-MAC2_IP=<Mac 2 ki IP>
-MAC3_IP=<Mac 3 ki IP>
-MAC4_IP=<Mac 4 ki IP>
+MAC1_IP=<Mac 1 IP>
+MAC2_IP=<Mac 2 IP>
+MAC3_IP=<Mac 3 IP>
+MAC4_IP=<Mac 4 IP>
 ```
-Phir:
+Then:
 ```bash
 ./render.sh
 scripts/netinfo.sh | tee evidence/phase1/A1-netinfo-$(hostname -s).txt
-scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # sab OK aane chahiye
+scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # all should be OK
 ```
-> Neeche `team1` aur `<MACx_IP>` ki jagah apna team / IP likhna.
-> IP baad mein badle → `config.env` update → `./render.sh` → apne role ka install command dobara.
+> Below, replace `team1` and `<MACx_IP>` with your own team / IP.
+> If the IP changes later → update `config.env` → `./render.sh` → rerun your role's install command.
 
 
-## 2. PHASE 1 — order mein chalao
+## 2. PHASE 1 — run in order
 
-**Start order team ka:** Mac 3 + Mac 4 backend → Mac 1 DNS → **Mac 2 (tum)** → certificate share.
+**Team start order:** Mac 3 + Mac 4 backend → Mac 1 DNS → **Mac 2 (you)** → certificate share.
 
 ```bash
-# (a) Certificates banao (sirf EK baar, sirf Mac 2 pe)
+# (a) Create certificates (only ONCE, only on Mac 2)
 tls/make-certs.sh
 ls tls/out                     # ca.crt  ca.key  server.crt  server.key ...
 
-# (b) Backends tak pahunch check
+# (b) Check backends are reachable
 curl http://<MAC3_IP>:3001/health      # ok
 curl http://<MAC4_IP>:3002/health      # ok
 
-# (c) nginx install + start  (password maangega)
+# (c) Install + start nginx  (asks for password)
 nginx/install-edge.sh phase1
 
-# (d) Live log — har request ka upstream= dikhega
+# (d) Live log — shows upstream= for every request
 tail -f /tmp/nginx-team-access.log
 ```
 
-**(e) Certificate share karo:** Finder → `tls/out/ca.crt` → AirDrop to Mac 1, Mac 3, Mac 4.
-❌ `ca.key` / `server.key` kisi ko mat bhejna (exception: Phase 2 Ext E mein Mac 3 ko `server.crt` + `server.key`).
+**(e) Share the certificate:** Finder → `tls/out/ca.crt` → AirDrop to Mac 1, Mac 3, Mac 4.
+❌ Never send `ca.key` / `server.key` to anyone (exception: in Phase 2 Ext E, send `server.crt` + `server.key` to Mac 3).
 
-Port 443 error aaye → `config.env` mein `HTTPS_PORT=8443`, `HTTP_PORT=8080` (charon Macs pe) → `./render.sh` → `nginx/install-edge.sh phase1`.
+If you get a port 443 error → set `HTTPS_PORT=8443`, `HTTP_PORT=8080` in `config.env` (on all four Macs) → `./render.sh` → `nginx/install-edge.sh phase1`.
 
-Agar is Mac pe bhi browser se test karna hai:
+If you also want to test from a browser on this Mac:
 ```bash
 tls/trust-ca.sh
 scripts/client-dns.sh primary
@@ -90,22 +90,22 @@ scripts/lb-test.sh 10
 ```bash
 # Ext D — HA failover config
 nginx/install-edge.sh phase2
-tail -f /tmp/nginx-team-access.log      # Backend A band ho to: upstream=A, B dikhega
+tail -f /tmp/nginx-team-access.log      # if Backend A is down, you'll see: upstream=A, B
 
-# Ext C demo — sirf Mac 2 backends tak pahunch sakta hai
-curl http://<MAC3_IP>:3001/health        # ok (Mac 1/4 se timeout hoga)
+# Ext C demo — only Mac 2 can reach the backends
+curl http://<MAC3_IP>:3001/health        # ok (times out from Mac 1/4)
 
-# Ext E — Mac 3 ko cert files bhejo (AirDrop):  tls/out/server.crt  tls/out/server.key
-# cutover ke baad (sab traffic Mac 3 pe):
+# Ext E — send cert files to Mac 3 (AirDrop):  tls/out/server.crt  tls/out/server.key
+# after cutover (all traffic on Mac 3):
 sudo nginx -s stop
 # restore:
 sudo nginx
 ```
 
-## Band karna / restart
+## Stop / restart
 ```bash
-sudo nginx -s stop        # band
-sudo nginx                # chalu
+sudo nginx -s stop        # stop
+sudo nginx                # start
 sudo nginx -t             # config check
-tail /tmp/nginx-team-error.log    # 502 aaye to yahan dekho
+tail /tmp/nginx-team-error.log    # look here if you get a 502
 ```

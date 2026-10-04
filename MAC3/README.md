@@ -1,81 +1,81 @@
 # MAC 3 — Backend A (port 3001)  ·  Phase 2: Backup DNS + Standby edge
 
-Tum **Mac 3** ho. Phase 1: Backend A. Phase 2: backup DNS + standby nginx bhi.
-Poori team ka overview: `SETUP_4_MACS.md` · bahut detail: `FULL_GUIDE.md`.
+You are **Mac 3**. Phase 1: Backend A. Phase 2: also backup DNS + standby nginx.
+Whole-team overview: `SETUP_4_MACS.md` · full detail: `FULL_GUIDE.md`.
 
-## 0. Fresh Mac setup (ek baar, is Mac pe)
+## 0. Fresh Mac setup (one time, on this Mac)
 
-Terminal kholo (Cmd+Space → "Terminal") aur ek-ek line chalao:
+Open Terminal (Cmd+Space → "Terminal") and run these lines one by one:
 
 ```bash
-# 1) Apple command line tools (python3, git, dig, curl) — popup aaye to Install
+# 1) Apple command line tools (python3, git, dig, curl) — click Install if a popup appears
 xcode-select --install
 
-# 2) Homebrew (password maangega — typing dikhegi nahi, normal hai)
+# 2) Homebrew (asks for password — typing won't be shown, that's normal)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew --version            # version dikhe = OK   (Intel Mac pe path /usr/local hota hai — installer jo bole wahi lines chalao)
+brew --version            # version shown = OK   (on Intel Macs the path is /usr/local — run whatever lines the installer prints)
 
-# 3) Zip ko Downloads mein unzip karo (double-click), phir:
+# 3) Unzip the zip in Downloads (double-click), then:
 cd ~/Downloads/MAC3
 xattr -dr com.apple.quarantine .
 chmod +x render.sh */*.sh
 ```
 
-Wi-Fi: sab 4 Mac **same hotspot/router** pe. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
-Firewall popup (python3 / nginx / dnsmasq "accept incoming connections?") aaye → **Allow**.
+Wi-Fi: all 4 Macs on the **same hotspot/router**. System Settings → Wi-Fi → (i) Details → **Private Wi-Fi address = Fixed**.
+If a firewall popup appears (python3 / nginx / dnsmasq "accept incoming connections?") → **Allow**.
 
-## 1. IP set karo (sirf `config.env`)
+## 1. Set IPs (only `config.env`)
 
 ```bash
-ipconfig getifaddr en0      # is Mac ki IP — team ke saath share karo
+ipconfig getifaddr en0      # this Mac's IP — share it with the team
 ```
-Charon IPs milne ke baad `config.env` kholo:
+Once you have all four IPs, open `config.env`:
 ```bash
 open -e config.env
 ```
-Ye lines badlo aur save karo (charon Macs pe **bilkul same** file):
+Change these lines and save (the file must be **exactly the same** on all four Macs):
 ```
 TEAM=team1
-MAC1_IP=<Mac 1 ki IP>
-MAC2_IP=<Mac 2 ki IP>
-MAC3_IP=<Mac 3 ki IP>
-MAC4_IP=<Mac 4 ki IP>
+MAC1_IP=<Mac 1 IP>
+MAC2_IP=<Mac 2 IP>
+MAC3_IP=<Mac 3 IP>
+MAC4_IP=<Mac 4 IP>
 ```
-Phir:
+Then:
 ```bash
 ./render.sh
 scripts/netinfo.sh | tee evidence/phase1/A1-netinfo-$(hostname -s).txt
-scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # sab OK aane chahiye
+scripts/pingall.sh | tee evidence/phase1/A2-pingall-$(hostname -s).txt   # all should be OK
 ```
-> Neeche `team1` aur `<MACx_IP>` ki jagah apna team / IP likhna.
-> IP baad mein badle → `config.env` update → `./render.sh` → apne role ka install command dobara.
+> Below, replace `team1` and `<MACx_IP>` with your own team / IP.
+> If the IP changes later → update `config.env` → `./render.sh` → rerun your role's install command.
 
 
-## 2. PHASE 1 — order mein chalao
+## 2. PHASE 1 — run in order
 
-**Tum sabse pehle start karte ho** (Mac 4 ke saath).
+**You start first** (together with Mac 4).
 
 ```bash
-# (a) Backend A chalao — ye terminal KHULA rakho
+# (a) Run Backend A — keep this terminal OPEN
 backend/run.sh A
-#     band karna = Ctrl+C,  dobara = backend/run.sh A
+#     stop = Ctrl+C,  start again = backend/run.sh A
 ```
-Naya terminal tab (Cmd+T), same folder (`cd ~/Downloads/MAC3`):
+New terminal tab (Cmd+T), same folder (`cd ~/Downloads/MAC3`):
 ```bash
 curl -i http://localhost:3001/api/status     # X-Backend: A
 ```
 
-**Mac 2 se `ca.crt` aane ke baad:**
+**After `ca.crt` arrives from Mac 2:**
 ```bash
 mkdir -p tls/out && mv ~/Downloads/ca.crt tls/out/
 tls/trust-ca.sh
 ```
 
-### Failure demos (tum karoge)
-- #3: Backend A terminal mein **Ctrl+C** → Mac 4 pe sab B → `backend/run.sh A`
-- #4: Ctrl+C (Mac 4 bhi band kare) → Mac 4 pe 502 → dono restart
+### Failure demos (you run these)
+- #3: Press **Ctrl+C** in the Backend A terminal → everything goes to B on Mac 4 → `backend/run.sh A`
+- #4: Ctrl+C (Mac 4 also stops its backend) → 502 on Mac 4 → restart both
 
 ## 3. PHASE 2
 
@@ -83,27 +83,27 @@ tls/trust-ca.sh
 # Ext A — Backup DNS (same records as Mac 1)
 dns/install-dns.sh
 
-# Ext B / E — DNS record change (Mac 1 ke saath SAME command)
+# Ext B / E — DNS record change (SAME command as Mac 1)
 scripts/dns-set-record.sh app <MAC3_IP>
-scripts/dns-set-record.sh api <MAC3_IP>     # sirf Ext E mein
+scripts/dns-set-record.sh api <MAC3_IP>     # only in Ext E
 scripts/dns-set-record.sh app reset
 scripts/dns-set-record.sh api reset
 
-# Ext C — Firewall: sirf Mac 2 port 3001 pe aa sake
+# Ext C — Firewall: only Mac 2 may reach port 3001
 firewall/isolate.sh apply
 firewall/isolate.sh status
-firewall/isolate.sh rollback       # ⚠️ demo ke baad ZAROOR (Ext E se pehle)
+firewall/isolate.sh rollback       # ⚠️ REQUIRED after the demo (before Ext E)
 
-# Ext D — Mac 2 bolega tab Ctrl+C backend, phir backend/run.sh A
+# Ext D — when Mac 2 says so, Ctrl+C the backend, then backend/run.sh A
 
-# Ext E — Standby edge. Mac 2 se server.crt + server.key AirDrop se aayenge:
+# Ext E — Standby edge. server.crt + server.key will arrive from Mac 2 via AirDrop:
 mv ~/Downloads/server.crt ~/Downloads/server.key tls/out/
 nginx/install-edge.sh phase2
-curl --resolve app.team1.test:443:<MAC3_IP> https://app.team1.test/edge-health   # test (kisi client se)
+curl --resolve app.team1.test:443:<MAC3_IP> https://app.team1.test/edge-health   # test (from any client)
 ```
-Note: Backend A (terminal 1) chalta rehna chahiye, baaki commands dusre tab mein.
+Note: Backend A (terminal 1) must keep running; run the other commands in another tab.
 
-## Band karna
+## Stop
 ```bash
 # backend: Ctrl+C
 sudo brew services stop dnsmasq
