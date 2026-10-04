@@ -1,5 +1,14 @@
 # 4 Mac Setup Guide — CN Project (Private Network Service Platform)
 
+## Team
+
+| Name | Roll No. |
+|---|---|
+| ARUN | 2401010098 |
+| MAYANK YADAV | 2401010271 |
+
+Report: [`CN_Project_Report.pdf`](CN_Project_Report.pdf) · Video script: [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md) · Form answers: [`FORM_ANSWERS.txt`](FORM_ANSWERS.txt)
+
 Har Mac ki apni zip hai (`MAC1.zip` … `MAC4.zip`). Har zip mein **pura project** hai
 (scripts ek dusre pe depend karte hain + Phase 2 mein roles badalte hain), bas upar
 `YOU_ARE_MAC_N.txt` batata hai ye kaunsa Mac hai. Pura detailed guide: `FULL_GUIDE.md`.
