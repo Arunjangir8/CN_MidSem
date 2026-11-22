@@ -1,0 +1,36 @@
+# =====================================================================
+#  dnsmasq config for team __TEAM__
+#  (made by generate-configs.sh from mac1-dns/dnsmasq.conf.template)
+#
+#  Used on:  Mac 1 = main DNS server (Phase 1)
+#            Mac 3 = backup DNS server (Phase 2, Extension A)
+#  Install to:  $(brew --prefix)/etc/dnsmasq.conf
+# =====================================================================
+
+# Don't send half-names (no dot) or private reverse lookups to the internet
+domain-needed
+bogus-priv
+
+# Don't read /etc/resolv.conf. Normal internet names (google.com, ...)
+# are forwarded to the Wi-Fi router instead.
+no-resolv
+server=__ROUTER_IP__
+
+# Our private zone. dnsmasq answers *.__TEAM__.test itself and never
+# asks the internet about it.
+local=/__TEAM__.test/
+
+# ---------------- OUR DNS RECORDS  (name -> IP) ----------------
+# Both names point to the nginx edge machine (Mac 2).
+# In Phase 2 these lines are changed with common/change-dns-record.sh
+address=/app.__TEAM__.test/__EDGE_IP__
+address=/api.__TEAM__.test/__EDGE_IP__
+
+# TTL = how many seconds a client may remember (cache) our answer.
+# Short on purpose, so changes show up quickly (Phase 2, Extension B).
+local-ttl=30
+
+# Log every DNS question so we can watch them live:
+#   tail -f /tmp/dnsmasq-__TEAM__.log
+log-queries
+log-facility=/tmp/dnsmasq-__TEAM__.log

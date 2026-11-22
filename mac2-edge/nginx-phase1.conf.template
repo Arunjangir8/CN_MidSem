@@ -1,0 +1,42 @@
+# =====================================================================
+#  nginx config — PHASE 1   (HTTPS + simple round-robin load balancer)
+#  (made by generate-configs.sh from mac2-edge/nginx-phase1.conf.template)
+#
+#  Install to:  $(brew --prefix)/etc/nginx/servers/team.conf
+#  Certificates must be in:  $(brew --prefix)/etc/nginx/certs/
+# =====================================================================
+
+# The group of backend servers. Default method = ROUND ROBIN:
+# request 1 -> A, request 2 -> B, request 3 -> A, ...
+upstream team_backends {
+    server __BACKEND_A_IP__:__BACKEND_A_PORT__;    # Backend A
+    server __BACKEND_B_IP__:__BACKEND_B_PORT__;    # Backend B
+}
+
+server {
+    # HTTPS. TLS is "terminated" here: traffic is encrypted from the
+    # client to nginx, then nginx talks plain HTTP to the backends.
+    listen __HTTPS_PORT__ ssl;
+
+    # Allow HTTP/2. If "nginx -t" says: unknown directive "http2",
+    # delete the next line and write the listen line as:
+    #     listen __HTTPS_PORT__ ssl http2;
+    http2 on;
+
+    server_name app.__TEAM__.test api.__TEAM__.test;
+
+    # Relative paths = inside $(brew --prefix)/etc/nginx/
+    ssl_certificate     certs/app.crt;
+    ssl_certificate_key certs/app.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://team_backends;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Extra headers so we can SEE what happened:
+        add_header X-Edge "__EDGE_NAME__" always;            # which nginx answered
+        add_header X-Upstream-Addr $upstream_addr always;    # which backend IP:port nginx used
+    }
+}

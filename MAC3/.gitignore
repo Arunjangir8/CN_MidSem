@@ -1,6 +1,0 @@
-build/
-tls/out/*.key
-tls/out/*.srl
-tls/out/*.csr
-firewall/rollback/pf.token
-.DS_Store

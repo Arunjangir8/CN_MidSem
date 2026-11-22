@@ -1,0 +1,49 @@
+# =====================================================================
+#  nginx config — PHASE 2   (HTTPS + load balancer WITH FAILOVER)
+#  (made by generate-configs.sh from mac2-edge/nginx-phase2.conf.template)
+#
+#  Used on:  Mac 2 = primary edge    (file: mac2-edge/generated/team-phase2.conf)
+#            Mac 3 = standby edge    (file: mac3-backends/generated/team-standby.conf)
+#  Install to:  $(brew --prefix)/etc/nginx/servers/team.conf
+#  Certificates must be in:  $(brew --prefix)/etc/nginx/certs/
+# =====================================================================
+
+upstream team_backends {
+    # max_fails=1 fail_timeout=10s means:
+    #   if a backend fails 1 time, nginx marks it "down" and skips it
+    #   for 10 seconds. After 10 seconds nginx tries it again.
+    #   (This is a "passive health check": nginx learns from real requests.)
+    server __BACKEND_A_IP__:__BACKEND_A_PORT__ max_fails=1 fail_timeout=10s;   # Backend A
+    server __BACKEND_B_IP__:__BACKEND_B_PORT__ max_fails=1 fail_timeout=10s;   # Backend B
+}
+
+server {
+    listen __HTTPS_PORT__ ssl;
+
+    # If "nginx -t" says: unknown directive "http2", delete the next line
+    # and write the listen line as:   listen __HTTPS_PORT__ ssl http2;
+    http2 on;
+
+    server_name app.__TEAM__.test api.__TEAM__.test;
+
+    ssl_certificate     certs/app.crt;
+    ssl_certificate_key certs/app.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://team_backends;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # FAILOVER: if a backend gives an error, times out, or returns
+        # 502/503/504, retry the SAME request on the other backend.
+        # The user never sees the error.
+        proxy_next_upstream error timeout http_502 http_503 http_504;
+
+        # Give up connecting to a dead backend after 2 seconds (default is 60).
+        proxy_connect_timeout 2s;
+
+        add_header X-Edge "__EDGE_NAME__" always;            # which nginx answered
+        add_header X-Upstream-Addr $upstream_addr always;    # which backend(s) nginx tried
+    }
+}
