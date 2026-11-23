@@ -40,6 +40,10 @@ HTTPS_PORT="443"
 # Name of the Wi-Fi network service (almost always "Wi-Fi")
 WIFI_SERVICE="Wi-Fi"
 
+# Single-Mac mode (bash solo.sh up) overrides the IPs above. Removed by: bash solo.sh down
+_SOLO_ENV="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/.solo/env"
+[ -f "$_SOLO_ENV" ] && source "$_SOLO_ENV"
+
 
 # ---------------------------------------------------------------------
 #  Normally you do NOT need to change anything below this line.

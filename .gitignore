@@ -1,1 +1,3 @@
 MAC*/tls/out/
+.solo/
+mac2-edge/certs/

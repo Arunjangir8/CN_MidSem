@@ -1,0 +1,27 @@
+# Single-Mac mode: Mac 1 (dnsmasq) and Mac 2 (nginx) as containers.
+# Backends run natively on this Mac. Start everything with:  bash solo.sh up
+services:
+  dns:            # = Mac 1
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM alpine:3.20
+        RUN apk add --no-cache dnsmasq
+    command: ["dnsmasq", "-k", "-C", "/etc/dnsmasq.conf", "--log-facility=-"]
+    volumes:
+      - ./mac1-dns/generated/dnsmasq.conf:/etc/dnsmasq.conf:ro
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    restart: unless-stopped
+
+  edge:           # = Mac 2
+    image: nginx:1.27-alpine
+    # 1 worker like Homebrew nginx, else each worker keeps its own round-robin and A/B don't alternate
+    command: ["sh", "-c", "sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"]
+    volumes:
+      - ./mac2-edge/generated/team-${PHASE:-phase1}.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./mac2-edge/certs:/etc/nginx/certs:ro
+    ports:
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
+    restart: unless-stopped

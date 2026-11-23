@@ -1,6 +1,6 @@
 # CN Project: Private Network Service Platform
 
-### 👉 START HERE
+### 👉 START HERE  (already set up? daily bring-up is in [STARTUP.md](STARTUP.md))
 
 This folder has **everything** for Phase 1 and Phase 2: the config files, the code, the helper scripts and the step-by-step guides.
 
