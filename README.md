@@ -40,7 +40,6 @@ This folder has **everything** for Phase 1 and Phase 2: the config files, the co
 | **Person 2** | **Mac 2** | nginx edge: HTTPS, certificates, load balancer | D (failover), E (edge migration) |
 | **Person 3** | **Mac 3** | The two backends | C (firewall), F (troubleshooting), evidence + report |
 
-⚠️ In the viva **every person can be asked about every part**. After each step, the person who did it explains it to the other two.
 
 ---
 
